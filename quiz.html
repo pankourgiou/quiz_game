@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atelier II — a world quiz that paints itself</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Instrument+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0f1029;--paper:#f3ead7;--mute:#a9a6c4;--verd:#3fb8a0;--saff:#f2b134;--rose:#e8546f;
+--serif:'Fraunces',Georgia,'Times New Roman',serif;--sans:'Instrument Sans',system-ui,-apple-system,'Segoe UI',sans-serif}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{background:radial-gradient(1200px 700px at 85% 0%,#2a2263 0%,var(--ink) 60%);color:var(--paper);font-family:var(--sans);line-height:1.5;padding:max(20px,env(safe-area-inset-top)) 20px 28px}
+main{max-width:1060px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:36px;align-items:center;min-height:calc(100vh - 56px)}
+@media(max-width:820px){main{grid-template-columns:1fr;gap:20px}}
+.canvaswrap{aspect-ratio:1;width:100%;max-width:520px;margin:0 auto;border-radius:6px;overflow:hidden;box-shadow:0 0 0 10px #1c1e4a,0 0 0 11px #3a3d82,0 30px 60px #0008}
+canvas{width:100%;height:100%;display:block;background:#ece1c8}
+h1{font-family:var(--serif);font-weight:600;font-size:clamp(2.6rem,6vw,4.4rem);line-height:1;letter-spacing:-.02em}
+h1 i{font-weight:400;color:var(--saff)}
+.lede{font-family:var(--serif);font-size:1.2rem;color:var(--mute);margin:18px 0 26px;max-width:34ch}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:26px}
+.chip{--c:var(--paper);border:1.5px solid var(--c);color:var(--c);background:none;border-radius:999px;padding:9px 16px;font:600 .92rem var(--sans);cursor:pointer;transition:.18s}
+.chip[aria-pressed=true]{background:var(--c);color:var(--ink)}
+button:focus-visible{outline:3px solid var(--saff);outline-offset:3px}
+.go{background:var(--saff);color:var(--ink);border:0;border-radius:4px;padding:14px 26px;font:600 1.05rem var(--sans);cursor:pointer}
+.go.ghost{background:none;color:var(--paper);border:1.5px solid var(--mute);margin-left:10px}
+.go:hover{filter:brightness(1.08)}
+.meta{display:flex;justify-content:space-between;color:var(--mute);font-size:.9rem;margin-bottom:10px}
+.bar{height:3px;background:#2b2e66;margin-bottom:26px}.bar b{display:block;height:100%;width:0;background:var(--saff);transition:width .4s}
+.cat{font-weight:600;margin-bottom:8px}
+.q{font-family:var(--serif);font-size:clamp(1.5rem,3.2vw,2.1rem);line-height:1.2;margin-bottom:24px;max-width:26ch}
+.opts{display:grid;gap:10px}
+.opt{text-align:left;background:#ffffff0d;color:var(--paper);border:1.5px solid #ffffff26;border-radius:6px;padding:13px 16px;font:400 1.02rem var(--sans);cursor:pointer;display:flex;gap:14px;transition:.15s}
+.opt:hover:not(:disabled){background:#ffffff1c;transform:translateX(4px)}
+.opt kbd{font:600 .8rem var(--sans);color:var(--mute);min-width:1ch}
+.opt.ok{background:#3fb8a033;border-color:var(--verd)}
+.opt.no{background:#e8546f2e;border-color:var(--rose)}
+.opt:disabled{cursor:default;color:inherit}
+.why{margin-top:18px;font-family:var(--serif);font-size:1.08rem;color:#d9d3e8;min-height:3.2em}
+.next{margin-top:12px}
+.hide{display:none!important}
+.score{font-family:var(--serif);font-size:5rem;line-height:1;font-weight:600}
+.rows{margin:22px 0;display:grid;gap:9px}
+.row{display:grid;grid-template-columns:90px 1fr 40px;gap:10px;align-items:center;font-size:.92rem}
+.row span{height:8px;background:#2b2e66;border-radius:4px;overflow:hidden}.row span i{display:block;height:100%}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+ <div class="canvaswrap"><canvas id="cv" width="900" height="900" aria-label="Your painting, which grows with every correct answer"></canvas></div>
+ <section>
+  <div id="start">
+   <h1>Atelier II<br><i>the world, painted</i></h1>
+   <p class="lede">History, maps, books, music and stars. Every right answer adds a stroke; every miss leaves a scratch.</p>
+   <div class="chips" id="chips"></div>
+   <button class="go" id="begin">Begin the painting</button>
+  </div>
+  <div id="play" class="hide">
+   <div class="meta"><span id="cnt"></span><span id="streak"></span></div>
+   <div class="bar"><b id="prog"></b></div>
+   <div class="cat" id="cat"></div>
+   <h2 class="q" id="q"></h2>
+   <div class="opts" id="opts"></div>
+   <p class="why" id="why" aria-live="polite"></p>
+   <button class="go next hide" id="next">Next question</button>
+  </div>
+  <div id="end" class="hide">
+   <p class="lede" id="title" style="margin-bottom:6px"></p>
+   <div class="score" id="score"></div>
+   <div class="rows" id="rows"></div>
+   <button class="go" id="again">Paint again</button><button class="go ghost" id="save">Save painting</button>
+  </div>
+ </section>
+</main>
+<script>
+const C={History:'#f2b134',Geography:'#3fb8a0',Literature:'#e8546f',Music:'#4a6cf7',Space:'#b07cf2'};
+// [category, question, correct, wrong1, wrong2, wrong3, explanation]
+const Q=[
+["History","In which year did the Berlin Wall fall?","1989","1991","1985","1979","The border opened on 9 November 1989, and Germany reunified the following year."],
+["History","Which ancient wonder still stands today?","Great Pyramid of Giza","Hanging Gardens of Babylon","Colossus of Rhodes","Lighthouse of Alexandria","It's the only one of the original Seven Wonders still largely intact."],
+["History","Magna Carta was sealed in which year?","1215","1066","1315","1415","King John agreed to it at Runnymede, limiting royal power."],
+["History","Who was the first Roman emperor?","Augustus","Julius Caesar","Nero","Constantine","Octavian took the name Augustus in 27 BCE; Caesar was dictator, never emperor."],
+["History","Which civilization built Machu Picchu?","Inca","Aztec","Maya","Olmec","Built in the 15th century high in the Andes of Peru."],
+["History","The Renaissance first flourished in which region?","Italian city-states","France","England","Spain","Florence, with the Medici as patrons, led the way in the 1300s–1400s."],
+["Geography","What is the capital of Australia?","Canberra","Sydney","Melbourne","Perth","Canberra was purpose-built as a compromise between Sydney and Melbourne."],
+["Geography","Mount Everest lies on the border of Nepal and…","China","India","Bhutan","Pakistan","The summit sits on the Nepal–China (Tibet) frontier."],
+["Geography","Which is the largest ocean?","Pacific","Atlantic","Indian","Arctic","The Pacific covers about a third of Earth's surface."],
+["Geography","Which is the smallest country by area?","Vatican City","Monaco","San Marino","Liechtenstein","About 0.44 km², entirely within Rome."],
+["Geography","Which continent has the most countries?","Africa","Asia","Europe","South America","Africa has 54 recognized countries."],
+["Geography","Which strait separates Spain from Morocco?","Strait of Gibraltar","Bosporus","Strait of Hormuz","Strait of Malacca","At its narrowest it's only about 14 km wide."],
+["Literature","Who wrote the novel 1984?","George Orwell","Aldous Huxley","Ray Bradbury","Franz Kafka","Published in 1949; Huxley wrote Brave New World."],
+["Literature","Who wrote Don Quixote?","Miguel de Cervantes","Lope de Vega","Jorge Luis Borges","Dante Alighieri","Often called the first modern novel (1605 and 1615)."],
+["Literature","Who spends ten years trying to get home in the Odyssey?","Odysseus","Achilles","Hector","Aeneas","Odysseus is the clever king of Ithaca who devised the Trojan Horse."],
+["Literature","Who wrote Pride and Prejudice?","Jane Austen","Charlotte Brontë","Mary Shelley","George Eliot","Published in 1813, with Elizabeth Bennet and Mr Darcy."],
+["Literature","\"Call me Ishmael\" opens which novel?","Moby-Dick","Treasure Island","Robinson Crusoe","Billy Budd","Herman Melville's 1851 whaling epic."],
+["Literature","Who wrote The Divine Comedy?","Dante Alighieri","Petrarch","Virgil","Boccaccio","Dante's poem journeys through Hell, Purgatory and Paradise."],
+["Music","How many strings does a standard violin have?","4","5","6","3","Tuned in fifths: G, D, A, E."],
+["Music","Who composed the Ninth Symphony with the Ode to Joy?","Beethoven","Mozart","Brahms","Schubert","Premiered in 1824, when Beethoven was almost completely deaf."],
+["Music","The clarinet belongs to which family?","Woodwind","Brass","Strings","Percussion","Sound comes from a vibrating single reed."],
+["Music","The tempo marking allegro means…","Fast and lively","Very slow","Gradually louder","Smooth and connected","Allegro is Italian for cheerful, and tells players to move briskly."],
+["Music","How many keys does a standard piano have?","88","76","92","100","52 white and 36 black keys."],
+["Music","Who composed The Four Seasons?","Antonio Vivaldi","J. S. Bach","Handel","Corelli","Four violin concertos from around 1720."],
+["Space","Which planet has the most confirmed moons?","Saturn","Jupiter","Uranus","Neptune","Saturn has overtaken Jupiter with well over 200 confirmed moons."],
+["Space","Who was the first human in space?","Yuri Gagarin","Alan Shepard","John Glenn","Valentina Tereshkova","Gagarin orbited Earth on 12 April 1961."],
+["Space","What is the Sun mostly made of?","Hydrogen","Helium","Oxygen","Iron","About 73% hydrogen and 25% helium by mass."],
+["Space","Sunlight takes roughly how long to reach Earth?","8 minutes","8 seconds","1 hour","1 day","About 150 million km at the speed of light."],
+["Space","Which star is nearest to us after the Sun?","Proxima Centauri","Sirius","Betelgeuse","Polaris","About 4.2 light-years away."],
+["Space","Who first walked on the Moon?","Neil Armstrong","Buzz Aldrin","Michael Collins","Alan Shepard","Apollo 11, 20 July 1969. Aldrin followed minutes later."]
+];
+const $=id=>document.getElementById(id),cv=$('cv'),x=cv.getContext('2d'),W=900;
+let sel=new Set(Object.keys(C)),deck,i,score,streak,shapes,tally,locked,raf;
+const rnd=(a,b)=>a+Math.random()*(b-a),shuf=a=>{a=[...a];for(let n=a.length;n;){const j=Math.random()*n--|0;[a[n],a[j]]=[a[j],a[n]]}return a};
+
+const chips=$('chips');
+Object.keys(C).forEach(k=>{const b=document.createElement('button');b.className='chip';b.textContent=k;b.style.setProperty('--c',C[k]);b.setAttribute('aria-pressed',true);
+ b.onclick=()=>{const on=b.getAttribute('aria-pressed')!=='true';if(!on&&sel.size===1)return;b.setAttribute('aria-pressed',on);on?sel.add(k):sel.delete(k)};chips.append(b)});
+
+function bg(){const g=x.createLinearGradient(0,0,W,W);g.addColorStop(0,'#f3ead7');g.addColorStop(1,'#e4d6b6');x.fillStyle=g;x.fillRect(0,0,W,W);
+ x.globalAlpha=.05;for(let n=0;n<900;n++){x.fillStyle=n%2?'#000':'#fff';x.fillRect((n*97)%W,(n*53)%W,2,2)}x.globalAlpha=1}
+function draw(s,t){const e=1-Math.pow(1-t,3),r=s.r*e;x.save();x.translate(s.x,s.y);x.rotate(s.a);x.fillStyle=x.strokeStyle=s.c;x.lineCap='round';
+ if(s.k==='x'){x.globalAlpha=.35*t;x.lineWidth=2;x.strokeStyle='#5c5a6e';x.beginPath();x.moveTo(-r,0);x.lineTo(r,s.r*.2*e);x.stroke()}
+ else if(s.k==='History'){x.globalAlpha=.85*t;x.beginPath();x.rect(-r*.6,0,r*1.2,r*.8);x.arc(0,0,r*.6,Math.PI,0);x.fill();x.fillStyle='#ece1c8';x.beginPath();x.rect(-r*.3,0,r*.6,r*.8);x.arc(0,0,r*.3,Math.PI,0);x.fill();x.fillStyle=s.c;x.fillRect(-r*.75,r*.8,r*1.5,r*.1)}
+ else if(s.k==='Geography'){x.lineWidth=4;for(let n=1;n<=5;n++){x.globalAlpha=.85*t/n**.3;x.beginPath();for(let a=0;a<=6.3;a+=.1){const q=r*n/5*(1+.18*Math.sin(3*a+n)+.08*Math.cos(5*a));a?x.lineTo(q*Math.cos(a),q*Math.sin(a)):x.moveTo(q,0)}x.closePath();x.stroke()}}
+ else if(s.k==='Literature'){x.lineWidth=5;x.globalAlpha=.85*t;x.beginPath();for(let a=0;a<=12.6;a+=.1)x.lineTo(r*a/12.6*Math.cos(a),r*a/12.6*Math.sin(a));x.stroke();x.beginPath();x.arc(r,0,r*.08,0,7);x.fill()}
+ else if(s.k==='Music'){x.lineWidth=4;for(let k=0;k<3;k++){x.globalAlpha=(.9-k*.2)*t;x.beginPath();for(let u=-r;u<=r;u+=4){const y=Math.sin(u/r*6+k)*r*.22+(k-1)*r*.25;u>-r?x.lineTo(u,y):x.moveTo(u,y)}x.stroke()}x.globalAlpha=t;x.beginPath();x.ellipse(r*.6,-r*.3,r*.1,r*.07,-.4,0,7);x.fill()}
+ else{x.globalAlpha=.85*t;x.beginPath();for(let n=0;n<16;n++){const q=n%2?r*.3:r;x.lineTo(q*Math.cos(n*Math.PI/8),q*Math.sin(n*Math.PI/8))}x.closePath();x.fill();x.globalAlpha=.6*t;x.beginPath();x.arc(r*.9,-r*.8,r*.08,0,7);x.fill()}
+ x.restore()}
+function paint(){bg();shapes.forEach(s=>draw(s,Math.min(1,(performance.now()-s.t0)/900)));if(shapes.some(s=>performance.now()-s.t0<900))raf=requestAnimationFrame(paint)}
+function stroke(cat,ok){shapes.push({k:ok?cat:'x',c:ok?C[cat]:'#5c5a6e',x:rnd(130,770),y:rnd(130,770),r:ok?rnd(90,170):rnd(150,330),a:rnd(0,6.28),t0:performance.now()});cancelAnimationFrame(raf);paint()}
+
+function start(){deck=shuf(Q.filter(q=>sel.has(q[0]))).slice(0,15);i=0;score=0;streak=0;shapes=[];tally={};sel.forEach(k=>tally[k]=[0,0]);
+ ['start','end'].forEach(id=>$(id).classList.add('hide'));$('play').classList.remove('hide');paint();show()}
+function show(){locked=false;const q=deck[i];$('cnt').textContent=`Question ${i+1} of ${deck.length}`;$('streak').textContent=streak>1?`${streak} in a row`:'';
+ $('prog').style.width=i/deck.length*100+'%';$('cat').textContent=q[0];$('cat').style.color=C[q[0]];$('q').textContent=q[1];$('why').textContent='';$('next').classList.add('hide');
+ const o=$('opts');o.innerHTML='';shuf(q.slice(2,6)).forEach((t,n)=>{const b=document.createElement('button');b.className='opt';b.innerHTML=`<kbd>${n+1}</kbd><span></span>`;b.lastChild.textContent=t;b.onclick=()=>pick(b,t);o.append(b)})}
+function pick(b,t){if(locked)return;locked=true;const q=deck[i],ok=t===q[2];
+ [...$('opts').children].forEach(e=>{e.disabled=true;if(e.lastChild.textContent===q[2])e.classList.add('ok')});if(!ok)b.classList.add('no');
+ tally[q[0]][1]++;if(ok){score++;streak++;tally[q[0]][0]++}else streak=0;stroke(q[0],ok);
+ $('why').textContent=(ok?'Yes. ':'Not quite. ')+q[6];$('next').textContent=i+1<deck.length?'Next question':'See my painting';$('next').classList.remove('hide');$('next').focus()}
+function next(){i++;i<deck.length?show():finish()}
+function finish(){$('play').classList.add('hide');$('end').classList.remove('hide');const p=score/deck.length;
+ $('title').textContent=p>.9?'Polymath. A masterwork.':p>.7?'Citizen of the world.':p>.45?'A promising studio.':'Every master starts with a blank canvas.';
+ $('score').textContent=`${score}/${deck.length}`;$('rows').innerHTML=Object.entries(tally).filter(([,v])=>v[1]).map(([k,v])=>`<div class="row"><b>${k.slice(0,5)}${k.length>5?'.':''}</b><span><i style="width:${v[0]/v[1]*100}%;background:${C[k]}"></i></span><em>${v[0]}/${v[1]}</em></div>`).join('')}
+
+$('begin').onclick=start;$('next').onclick=next;$('again').onclick=()=>{$('end').classList.add('hide');$('start').classList.remove('hide');shapes=[];bg()};
+$('save').onclick=()=>{const a=document.createElement('a');a.download='my-atelier-world-painting.png';a.href=cv.toDataURL('image/png');a.click()};
+addEventListener('keydown',e=>{if($('play').classList.contains('hide'))return;if(/^[1-4]$/.test(e.key)&&!locked)$('opts').children[e.key-1]?.click();else if(e.key==='Enter'&&locked){e.preventDefault();next()}});
+shapes=[];bg();
+</script>
+</body>
+</html>
